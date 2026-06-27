@@ -68,6 +68,52 @@ public:
         cv::waitKey(0);
     }
 
+    void process_video(string video_path) {
+        cv::VideoCapture cap;
+        
+        if (video_path == "0") {
+            cap.open(0);
+        } else {
+            cap.open(video_path);
+        }
+
+        if (!cap.isOpened()) {
+            cerr << "Error: Could not open video feed! Check the file path." << endl;
+            return;
+        }
+
+        cv::Mat frame;
+        vector<float> input_tensor;
+
+        cout << "[INFO] Starting video stream. Press 'q' or 'ESC' to stop." << endl;
+
+        while (true) {
+            cap >> frame; 
+            if (frame.empty()) {
+                cout << "[INFO] End of video stream reached." << endl;
+                break; 
+            }
+
+            cv::resize(frame, frame, img_size); 
+            preprocess(frame, input_tensor);
+
+            vector<Detection> crosswalk_dets = run_inference(session_crosswalk.get(), input_tensor);
+            vector<Detection> vehicle_dets = run_inference(session_vehicles.get(), input_tensor);
+
+            IntersectionStatus status = evaluate_spatial_logic(crosswalk_dets, vehicle_dets);
+            render_hud(frame, crosswalk_dets, vehicle_dets, status);
+            
+            cv::imshow("Live Intersection Stream", frame);
+            
+            // press q or esc to stop the video feed
+            char key = (char)cv::waitKey(1);
+            if (key == 27 || key == 'q') break;
+        }
+        
+        cap.release();
+        cv::destroyAllWindows();
+    }
+
 private:
     vector<Detection> run_inference(Ort::Session* session, const vector<float>& input_tensor) {
         vector<Detection> detections;
@@ -94,7 +140,7 @@ private:
                 float conf = output_data[(4 + c) * rows + i];
                 if (conf > max_conf) { max_conf = conf; best_class_id = c; }
             }
-            if (max_conf > 0.25f) { 
+            if (max_conf > 0.15f) { 
                 float xc = output_data[0 * rows + i], yc = output_data[1 * rows + i], w = output_data[2 * rows + i], h = output_data[3 * rows + i];
                 boxes.push_back(cv::Rect(int(xc - 0.5 * w), int(yc - 0.5 * h), int(w), int(h)));
                 confidences.push_back(max_conf);
@@ -102,7 +148,7 @@ private:
             }
         }
         vector<int> indices;
-        cv::dnn::NMSBoxes(boxes, confidences, 0.25f, 0.45f, indices);
+        cv::dnn::NMSBoxes(boxes, confidences, 0.15f, 0.45f, indices);
         for (int idx : indices) detections.push_back({boxes[idx], class_ids[idx], confidences[idx]});
         return detections;
     }
@@ -129,7 +175,7 @@ private:
             string label_name;
 
             if (e.class_id == 17) {
-                color = cv::Scalar(0, 0, 255);
+                color = cv::Scalar(0, 0, 255); 
                 label_name = "Red Light";
             } else if (e.class_id == 11 || e.class_id == 20) {
                 color = cv::Scalar(255, 0, 0); 
@@ -157,6 +203,15 @@ private:
 
 int main() {
     AutonomousPerceptionEngine system_core(L"model_weights/crosswalk_best.onnx", L"model_weights/C&TL_detector2.onnx");
-    system_core.process_image("image2.jpg");
+
+    // OPTION A: Process a single image
+    system_core.process_image("image1.jpg");
+
+    // OPTION B: Process a video file
+    // system_core.process_video("traffic_test.mp4");
+
+    // OPTION C: Use a live Webcam (0 is the default camera ID)
+    // system_core.process_video("0");
+
     return 0;
 }
