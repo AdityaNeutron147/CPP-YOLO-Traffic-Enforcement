@@ -12,7 +12,7 @@ This engine was trained on a dense urban dataset, demonstrating high reliability
 
 Performance Summary
 
-Peak mAP@0.5: 0.65
+Peak mAP@0.5: 0.65 <br>
 Peak mAP@0.5-0.95: 0.37
 
 Training Convergence: Stable reduction in box, classification, and DFL losses over 50 epochs.
@@ -21,9 +21,9 @@ Baseline Validation
 
 Below are the training results and confusion matrix demonstrating the system's baseline accuracy:
 
-Performance Chart  model_performance/C&TL/results.png
+Performance Chart - model_performance/C&TL/results.png
 
-Confusion Matrix  model_performance/C&TL/confusion_matrix.png
+Confusion Matrix - model_performance/C&TL/confusion_matrix.png
 
 🧠 Core Architecture & Dual-Model Pipeline
 
@@ -81,29 +81,29 @@ $$\text{Area}(I) = \max(0, \text{xmax}_I - \text{xmin}_I) \times \max(0, \text{y
 
 A "VIOLATION" state is triggered if and only if:
 
-A Traffic Light Red State detection exists: $\exists e \in \text{elements} \text{ s.t. } \text{class\_id}(e) = 17$ (Red Light Active).
+An active red light detection exists: $\exists e \in \text{elements} \text{ s.t. } \text{classID}(e) = 17$ (Red Light Active).
 
-A vehicle detection overlaps with any crosswalk detection:
+A vehicle bounding box overlaps with a crosswalk bounding box on the flat plane:
 
-$$\text{Area}(I) > 0 \quad \text{where} \quad e \in \{\text{Vehicles}\} \text{ and } cw \in \{\text{Crosswalks}\}$$
+$$\text{Area}(I) > 0 \quad \text{where} \quad v \in \{\text{Vehicles}\} \text{ and } c \in \{\text{Crosswalks}\}$$
 
-By performing this arithmetic natively in C++ on standard cv::Rect objects using the overloaded & intersection operator ((cw.box & e.box).area()), calculation overhead is kept below $0.05 \text{ milliseconds}$ per frame.
+By performing this arithmetic natively in C++ on standard cv::Rect objects using the overloaded & intersection operator ((cw.box & e.box).area()), execution overhead is kept under $0.05\text{ ms}$ per frame, making the engine incredibly light.
 
 **How to use the model yourself**
 
 Requirements
 
-CMake (v3.10+)
-OpenCV (v4.0.0+)
+CMake (v3.10+) <br>
+OpenCV (v4.0.0+) <br>
 ONNX Runtime (v1.14.1+)
 
-Running the Engine
 Configuring Input Modes
 
-You can easily toggle between inputs inside CW&TL_logic.cpp by modifying the main() execution entry point:
+You can easily toggle between inputs inside your primary execution file by modifying the main() entry point:
 
+```
 int main() {
-    // 1. Initialize the dual-model engine with relative weights paths
+    // 1. Initialize the dual-model engine with your weight files
     AutonomousPerceptionEngine system_core(L"onnx_model/crosswalk_best.onnx", L"onnx_model/C&TL_detector2.onnx");
     
     // OPTION A: PROCESS SINGLE STATIC IMAGE
@@ -117,5 +117,8 @@ int main() {
 
     return 0;
 }
+```
+
+Built with passion in C++, OpenCV, and YOLOv8 ONNX Runtime.
 
 Built with C++, OpenCV, and YOLOv8
